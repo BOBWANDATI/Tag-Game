@@ -3,7 +3,7 @@ import "./App.css";
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const TEAM_LEFT  = { id: "L", name: "Fire", color: "#ff4422", glow: "#ff220088", accent: "#ffaa00", dark: "#aa2200" };
-const TEAM_RIGHT = { id: "R", name: "Ice",  color: "#22aaff", glow: "#0066ff88", accent: "#00ffee", dark: "#004488" };
+const TEAM_RIGHT = { id: "R", name: "Ice",  color: "#3399ff", glow: "#0066ff88", accent: "#88ddff", dark: "#004488" };
 
 // WIN when rope position reaches ±WIN_POS (10 pulls of 10 = 100)
 const WIN_POS    = 100;
@@ -269,7 +269,6 @@ export default function App() {
       setAnsweredL(false);
       setCorrectL(false);
       setStateL("idle");
-      // Restart timer for left side
       if (timerLRef.current) clearInterval(timerLRef.current);
       timerLRef.current = setInterval(() => {
         setTimeLeftL(prev => { if (prev <= 1) { clearInterval(timerLRef.current); return 0; } return prev - 1; });
@@ -281,7 +280,6 @@ export default function App() {
       setAnsweredR(false);
       setCorrectR(false);
       setStateR("idle");
-      // Restart timer for right side
       if (timerRRef.current) clearInterval(timerRRef.current);
       timerRRef.current = setInterval(() => {
         setTimeLeftR(prev => { if (prev <= 1) { clearInterval(timerRRef.current); return 0; } return prev - 1; });
@@ -291,7 +289,6 @@ export default function App() {
 
   // Start a new game
   const startGame = useCallback(() => {
-    // Clean up all timers
     if (timerLRef.current) clearInterval(timerLRef.current);
     if (timerRRef.current) clearInterval(timerRRef.current);
     
@@ -305,7 +302,6 @@ export default function App() {
     setStateL("idle");
     setStateR("idle");
     
-    // Generate fresh questions for both sides
     const newQL = makeQ(diff);
     const newQR = makeQ(diff);
     setQL(newQL);
@@ -321,7 +317,6 @@ export default function App() {
     
     setScreen("game");
     
-    // Start timers independently
     timerLRef.current = setInterval(() => {
       setTimeLeftL(prev => { if (prev <= 1) { clearInterval(timerLRef.current); return 0; } return prev - 1; });
     }, 1000);
@@ -361,11 +356,9 @@ export default function App() {
     
     setProcessingPull(true);
     
-    // Determine pull direction
     let delta = 0;
     
     if (correct) {
-      // Correct answer - pull toward this team
       if (isLeft) {
         delta = -PULL_AMT;
         setScoreL(prev => prev + 1);
@@ -382,7 +375,6 @@ export default function App() {
         setTimeout(() => setStateL("idle"), 700);
       }
     } else {
-      // Wrong answer - opponent pulls
       if (isLeft) {
         delta = +PULL_AMT;
         setScoreR(prev => prev + 1);
@@ -400,14 +392,12 @@ export default function App() {
       }
     }
     
-    // Update rope position
     const newRopePos = Math.max(-WIN_POS, Math.min(WIN_POS, ropePos + delta));
     setRopePos(newRopePos);
     
-    // Show banner message
     let msg = "";
     if (correct) {
-      msg = isLeft ? "🔥 FIRE PULLS! Ice gets dragged!" : "❄️ ICE PULLS! Fire gets dragged!";
+      msg = isLeft ? "🔥 FIRE PULLS! Ice gets closer to the line!" : "❄️ ICE PULLS! Fire gets closer to the line!";
     } else {
       msg = isLeft ? "❌ Fire missed! Ice counter-pulls!" : "❌ Ice missed! Fire counter-pulls!";
     }
@@ -415,13 +405,13 @@ export default function App() {
     setShowBan(true);
     setTimeout(() => setShowBan(false), 1200);
     
-    // Check win condition
+    // WIN CONDITION: Only when opponent is dragged past the center line
     if (newRopePos <= -WIN_POS) {
       setGameActive(false);
       setStateL("winning");
       setStateR("dragged");
       setWinner(TEAM_LEFT);
-      setTimeout(() => setScreen("result"), 1200);
+      setTimeout(() => setScreen("result"), 1500);
       return;
     }
     if (newRopePos >= WIN_POS) {
@@ -429,11 +419,10 @@ export default function App() {
       setStateR("winning");
       setStateL("dragged");
       setWinner(TEAM_RIGHT);
-      setTimeout(() => setScreen("result"), 1200);
+      setTimeout(() => setScreen("result"), 1500);
       return;
     }
     
-    // Refresh the question for the side that answered
     refreshQuestion(side);
     
     setTimeout(() => {
@@ -483,8 +472,8 @@ export default function App() {
   }, []);
 
   const norm = ropePos / WIN_POS;
-  const leftCharPct = 18 + Math.max(0, norm) * 30;
-  const rightCharPct = 82 + Math.min(0, norm) * 30;
+  const leftCharPct = 15 + Math.max(0, norm) * 35;
+  const rightCharPct = 85 + Math.min(0, norm) * 35;
 
   // ── MENU ─────────────────────────────────────────────────────────────────
   if (screen === "menu") return (
@@ -520,8 +509,9 @@ export default function App() {
           <b>🔥 HOW TO WIN:</b> Answer your math question correctly to PULL the rope!<br/>
           ⚡ <strong>NO WAITING:</strong> The moment you answer, the pull happens instantly!<br/>
           💪 Each correct pull drags your opponent <strong>10%</strong> toward the center line.<br/>
-          🏆 <strong>10 PULLS = VICTORY!</strong> First to drag the enemy past the center line WINS!<br/>
-          ❌ Wrong answer = you get dragged instead. Don't let the timer run out!
+          🏆 <strong>DRAG YOUR OPPONENT PAST THE CENTER LINE TO WIN!</strong><br/>
+          ❌ Wrong answer = you get dragged instead. Don't let the timer run out!<br/>
+          <span style={{color: "#3399ff"}}>❄️ ICE TEAM is now BRIGHT BLUE and fully visible!</span>
         </div>
       </div>
       <div className="footer-credit">Created by Abob Wandati — Software Engineer</div>
@@ -530,15 +520,14 @@ export default function App() {
 
   // ── RESULT ───────────────────────────────────────────────────────────────
   if (screen === "result") {
-    const isDraw = winner === "draw";
-    const wt = !isDraw ? winner : null;
+    const wt = winner;
     return (
       <div className="app result">
         <div className="res-glow" style={{ background: wt ? `radial-gradient(ellipse at center, ${wt.glow} 0%, transparent 60%)` : "none" }} />
         <div className="res-card">
           <div className="res-confetti">🏆 🎉 🎆 🥇 🎊</div>
           <h2 className="res-title" style={{ color: wt ? wt.color : "#f1c40f", textShadow: `0 0 40px ${wt ? wt.color : "#f1c40f"}` }}>
-            {isDraw ? "DRAW! 🤝" : `🎉 ${wt.name.toUpperCase()} WINS! 🎉`}
+            {wt ? `🎉 ${wt.name.toUpperCase()} WINS! 🎉` : "GAME OVER!"}
           </h2>
           <div className="res-stage">
             <div className="res-char" style={{ width: "100px", height: "180px" }}>
@@ -572,17 +561,17 @@ export default function App() {
       <HudBar ropePos={ropePos} scoreL={scoreL} scoreR={scoreR} />
       <div className="arena">
         <div className="arena-floor" />
-        <div className="arena-floor-line" />
+        <div className="arena-center-line" />
         <div className="arena-rope">
           <Rope ropePos={ropePos} tick={tick} leftX={leftCharPct + 1.5} rightX={rightCharPct - 1.5} />
         </div>
-        <div className={`arena-char arena-char-l ${stateL === "pulling" ? "char-lunge-l" : ""}`} style={{ left: `${leftCharPct}%`, position: "relative" }}>
+        <div className={`arena-char-left ${stateL === "pulling" ? "char-lunge" : ""}`} style={{ left: `${leftCharPct}%` }}>
           <Human team={TEAM_LEFT} state={stateL} />
-          {stateL === "pulling" && <div className="dust dust-l" />}
+          {stateL === "pulling" && <div className="dust-left" />}
         </div>
-        <div className={`arena-char arena-char-r ${stateR === "pulling" ? "char-lunge-r" : ""}`} style={{ left: `${rightCharPct}%`, position: "relative" }}>
+        <div className={`arena-char-right ${stateR === "pulling" ? "char-lunge-right" : ""}`} style={{ left: `${rightCharPct}%` }}>
           <Human team={TEAM_RIGHT} state={stateR} flipped />
-          {stateR === "pulling" && <div className="dust dust-r" />}
+          {stateR === "pulling" && <div className="dust-right" />}
         </div>
       </div>
       {showBan && <div className="banner">{banner}</div>}
