@@ -160,26 +160,32 @@ function TimerRing({ timeLeft }) {
   );
 }
 
-// ─── QUESTION CARD ────────────────────────────────────────────────────────────
+// ─── QUESTION CARD with BIGGER BUTTONS ────────────────────────────────────────
 function QCard({ team, q, opts, onAnswer, timeLeft, answered, correct, side }) {
   return (
-    <div className={`qcard qcard-${side} ${answered ? (correct ? "qcard-ok" : "qcard-fail") : ""}`}
+    <div className={`qpanel qpanel-${side} ${answered ? (correct ? "qp-ok" : "qp-no") : ""}`}
       style={{ "--tc": team.color, "--ta": team.accent, "--tg": team.glow }}>
-      <div className="qcard-header">
-        <div className="qcard-teamname">{team.name}</div>
+      <div className="qp-header">
+        <div className="qp-name" style={{ color: team.color }}>{team.name}</div>
         {!answered && <TimerRing timeLeft={timeLeft} />}
       </div>
       {!answered ? (
         <>
-          <div className="qcard-eq">{q.str} <span className="qcard-eq-eq">=</span> <span className="qcard-q">?</span></div>
-          <div className="qcard-opts">
-            {opts.map(o => <button key={o} className="qcard-opt" onClick={() => onAnswer(o)}>{o}</button>)}
+          <div className="qp-eq">
+            {q.str} <span className="qp-eq-eq">=</span> <span className="qp-q">?</span>
+          </div>
+          <div className="qp-opts">
+            {opts.map(o => (
+              <button key={o} className="qp-btn" onClick={() => onAnswer(o)}>
+                {o}
+              </button>
+            ))}
           </div>
         </>
       ) : (
-        <div className="qcard-done">
-          {correct ? <div className="qcd-win">💪 PULL!</div> : <div className="qcd-lose">❌ Wrong!</div>}
-          <div className="qcd-ans">{q.str} = <b>{q.ans}</b></div>
+        <div className="qp-done">
+          {correct ? <div className="qp-win">💪 PULL!</div> : <div className="qp-lose">❌ Wrong!</div>}
+          <div className="qp-reveal">{q.str} = <strong>{q.ans}</strong></div>
         </div>
       )}
     </div>
@@ -189,31 +195,30 @@ function QCard({ team, q, opts, onAnswer, timeLeft, answered, correct, side }) {
 // ─── HUD BAR ─────────────────────────────────────────────────────────────────
 function HudBar({ ropePos, scoreL, scoreR }) {
   const markerPct = ((ropePos + WIN_POS) / (WIN_POS * 2)) * 100;
-  // Calculate pull count (how many pulls until win)
   const pullsNeededL = Math.ceil((WIN_POS + ropePos) / PULL_AMT);
   const pullsNeededR = Math.ceil((WIN_POS - ropePos) / PULL_AMT);
   
   return (
-    <div className="hudbar">
-      <div className="hudbar-score" style={{ color: TEAM_LEFT.color, textShadow: `0 0 14px ${TEAM_LEFT.color}` }}>
+    <div className="hud">
+      <div className="hud-s" style={{ color: TEAM_LEFT.color, textShadow: `0 0 14px ${TEAM_LEFT.color}` }}>
         {scoreL}
-        <div className="hudbar-pulls">{pullsNeededL} pulls to win</div>
+        <div className="hud-pulls">{pullsNeededL} pulls</div>
       </div>
-      <div className="hudbar-center">
-        <div className="hudbar-track">
-          <div className="hbt-fill-l" style={{ width: `${100 - markerPct}%` }}/>
-          <div className="hbt-fill-r" style={{ width: `${markerPct}%` }}/>
-          <div className="hbt-marker" style={{ left: `${markerPct}%` }}>▼</div>
-          <div className="hbt-end hbt-end-l" /><div className="hbt-end hbt-end-r" />
+      <div className="hud-mid">
+        <div className="hud-tug">
+          <div className="hud-tug-fill-l" style={{ width: `${100 - markerPct}%` }}/>
+          <div className="hud-tug-fill-r" style={{ width: `${markerPct}%` }}/>
+          <div className="hud-marker" style={{ left: `${markerPct}%` }}>▼</div>
+          <div className="hud-goal-l" /><div className="hud-goal-r" />
         </div>
-        <div className="hudbar-names">
+        <div className="hud-lbls">
           <span style={{ color: TEAM_LEFT.color }}>🔥 {TEAM_LEFT.name}</span>
           <span style={{ color: TEAM_RIGHT.color }}>❄️ {TEAM_RIGHT.name}</span>
         </div>
       </div>
-      <div className="hudbar-score" style={{ color: TEAM_RIGHT.color, textShadow: `0 0 14px ${TEAM_RIGHT.color}` }}>
+      <div className="hud-s" style={{ color: TEAM_RIGHT.color, textShadow: `0 0 14px ${TEAM_RIGHT.color}` }}>
         {scoreR}
-        <div className="hudbar-pulls">{pullsNeededR} pulls to win</div>
+        <div className="hud-pulls">{pullsNeededR} pulls</div>
       </div>
     </div>
   );
@@ -247,7 +252,6 @@ export default function App() {
 
   const timerLRef = useRef(null);
   const timerRRef = useRef(null);
-  const pullTimeoutRef = useRef(null);
 
   // Rope tick animation
   useEffect(() => {
@@ -265,6 +269,11 @@ export default function App() {
       setAnsweredL(false);
       setCorrectL(false);
       setStateL("idle");
+      // Restart timer for left side
+      if (timerLRef.current) clearInterval(timerLRef.current);
+      timerLRef.current = setInterval(() => {
+        setTimeLeftL(prev => { if (prev <= 1) { clearInterval(timerLRef.current); return 0; } return prev - 1; });
+      }, 1000);
     } else {
       setQR(newQ);
       setOR(makeOpts(newQ.ans));
@@ -272,6 +281,11 @@ export default function App() {
       setAnsweredR(false);
       setCorrectR(false);
       setStateR("idle");
+      // Restart timer for right side
+      if (timerRRef.current) clearInterval(timerRRef.current);
+      timerRRef.current = setInterval(() => {
+        setTimeLeftR(prev => { if (prev <= 1) { clearInterval(timerRRef.current); return 0; } return prev - 1; });
+      }, 1000);
     }
   }, [diff]);
 
@@ -280,7 +294,6 @@ export default function App() {
     // Clean up all timers
     if (timerLRef.current) clearInterval(timerLRef.current);
     if (timerRRef.current) clearInterval(timerRRef.current);
-    if (pullTimeoutRef.current) clearTimeout(pullTimeoutRef.current);
     
     setRopePos(0);
     setScoreL(0);
@@ -317,7 +330,7 @@ export default function App() {
     }, 1000);
   }, [diff]);
 
-  // Handle timer expiration for left side
+  // Handle timer expiration
   useEffect(() => {
     if (!gameActive || screen !== "game") return;
     if (timeLeftL === 0 && !answeredL && !processingPull) {
@@ -327,7 +340,6 @@ export default function App() {
     }
   }, [timeLeftL, gameActive, screen, answeredL, processingPull]);
 
-  // Handle timer expiration for right side
   useEffect(() => {
     if (!gameActive || screen !== "game") return;
     if (timeLeftR === 0 && !answeredR && !processingPull) {
@@ -351,55 +363,41 @@ export default function App() {
     
     // Determine pull direction
     let delta = 0;
-    let pullingTeam = null;
-    let draggedTeam = null;
     
     if (correct) {
       // Correct answer - pull toward this team
       if (isLeft) {
         delta = -PULL_AMT;
-        pullingTeam = TEAM_LEFT;
-        draggedTeam = TEAM_RIGHT;
         setScoreL(prev => prev + 1);
         setStateL("pulling");
         setStateR("dragged");
-        setTimeout(() => setStateL("idle"), 600);
+        setTimeout(() => setStateL("idle"), 500);
+        setTimeout(() => setStateR("idle"), 700);
       } else {
         delta = +PULL_AMT;
-        pullingTeam = TEAM_RIGHT;
-        draggedTeam = TEAM_LEFT;
         setScoreR(prev => prev + 1);
         setStateR("pulling");
         setStateL("dragged");
-        setTimeout(() => setStateR("idle"), 600);
+        setTimeout(() => setStateR("idle"), 500);
+        setTimeout(() => setStateL("idle"), 700);
       }
-      setTimeout(() => {
-        if (isLeft) setStateR("idle");
-        else setStateL("idle");
-      }, 800);
     } else {
       // Wrong answer - opponent pulls
       if (isLeft) {
         delta = +PULL_AMT;
-        pullingTeam = TEAM_RIGHT;
-        draggedTeam = TEAM_LEFT;
         setScoreR(prev => prev + 1);
         setStateR("pulling");
         setStateL("dragged");
-        setTimeout(() => setStateR("idle"), 600);
+        setTimeout(() => setStateR("idle"), 500);
+        setTimeout(() => setStateL("idle"), 700);
       } else {
         delta = -PULL_AMT;
-        pullingTeam = TEAM_LEFT;
-        draggedTeam = TEAM_RIGHT;
         setScoreL(prev => prev + 1);
         setStateL("pulling");
         setStateR("dragged");
-        setTimeout(() => setStateL("idle"), 600);
+        setTimeout(() => setStateL("idle"), 500);
+        setTimeout(() => setStateR("idle"), 700);
       }
-      setTimeout(() => {
-        if (isLeft) setStateR("idle");
-        else setStateL("idle");
-      }, 800);
     }
     
     // Update rope position
@@ -409,7 +407,7 @@ export default function App() {
     // Show banner message
     let msg = "";
     if (correct) {
-      msg = isLeft ? "🔥 Fire PULLS! Ice gets dragged!" : "❄️ Ice PULLS! Fire gets dragged!";
+      msg = isLeft ? "🔥 FIRE PULLS! Ice gets dragged!" : "❄️ ICE PULLS! Fire gets dragged!";
     } else {
       msg = isLeft ? "❌ Fire missed! Ice counter-pulls!" : "❌ Ice missed! Fire counter-pulls!";
     }
@@ -423,7 +421,7 @@ export default function App() {
       setStateL("winning");
       setStateR("dragged");
       setWinner(TEAM_LEFT);
-      setTimeout(() => setScreen("result"), 1000);
+      setTimeout(() => setScreen("result"), 1200);
       return;
     }
     if (newRopePos >= WIN_POS) {
@@ -431,7 +429,7 @@ export default function App() {
       setStateR("winning");
       setStateL("dragged");
       setWinner(TEAM_RIGHT);
-      setTimeout(() => setScreen("result"), 1000);
+      setTimeout(() => setScreen("result"), 1200);
       return;
     }
     
@@ -440,17 +438,16 @@ export default function App() {
     
     setTimeout(() => {
       setProcessingPull(false);
-    }, 500);
+    }, 800);
   }, [gameActive, processingPull, answeredL, answeredR, correctL, correctR, ropePos, refreshQuestion]);
 
-  // Watch for left side answer
+  // Watch for answers
   useEffect(() => {
     if (answeredL && gameActive && !processingPull && screen === "game") {
       processPull("L");
     }
   }, [answeredL, gameActive, processingPull, screen, processPull]);
 
-  // Watch for right side answer
   useEffect(() => {
     if (answeredR && gameActive && !processingPull && screen === "game") {
       processPull("R");
@@ -466,7 +463,6 @@ export default function App() {
       setCorrectL(isCorrect);
       setAnsweredL(true);
       setStateL(isCorrect ? "correct" : "wrong");
-      // Stop timer for this side
       if (timerLRef.current) clearInterval(timerLRef.current);
     } else {
       if (answeredR) return;
@@ -474,7 +470,6 @@ export default function App() {
       setCorrectR(isCorrect);
       setAnsweredR(true);
       setStateR(isCorrect ? "correct" : "wrong");
-      // Stop timer for this side
       if (timerRRef.current) clearInterval(timerRRef.current);
     }
   }, [gameActive, processingPull, answeredL, answeredR, qL, qR]);
@@ -482,7 +477,6 @@ export default function App() {
   const goToMenu = useCallback(() => {
     if (timerLRef.current) clearInterval(timerLRef.current);
     if (timerRRef.current) clearInterval(timerRRef.current);
-    if (pullTimeoutRef.current) clearTimeout(pullTimeoutRef.current);
     setScreen("menu");
     setGameActive(false);
     setProcessingPull(false);
@@ -496,36 +490,41 @@ export default function App() {
   if (screen === "menu") return (
     <div className="app menu">
       <div className="menu-bg" />
-      <div className="menu-gl menu-gl-l" />
-      <div className="menu-gl menu-gl-r" />
-      <div className="menu-preview">
-        <div className="mp-char mp-char-l"><Human team={TEAM_LEFT} state="idle" /></div>
-        <div className="mp-rope"><Rope ropePos={0} tick={tick} leftX={22} rightX={78} /></div>
-        <div className="mp-char mp-char-r"><Human team={TEAM_RIGHT} state="idle" flipped /></div>
-        <div className="mp-floor" /><div className="mp-center" />
+      <div className="menu-glow-l" />
+      <div className="menu-glow-r" />
+      <div className="menu-stage">
+        <div className="menu-char-l"><Human team={TEAM_LEFT} state="idle" /></div>
+        <div className="menu-rope-preview"><Rope ropePos={0} tick={tick} leftX={22} rightX={78} /></div>
+        <div className="menu-char-r"><Human team={TEAM_RIGHT} state="idle" flipped /></div>
+        <div className="menu-floor" />
       </div>
-      <h1 className="menu-title"><span className="mt-l">MATH</span><span className="mt-c"> TUG </span><span className="mt-r">OF WAR</span></h1>
+      <h1 className="menu-title">
+        <span className="mt-fire">MATH</span>
+        <span className="mt-mid"> TUG </span>
+        <span className="mt-ice">OF WAR</span>
+      </h1>
       <p className="menu-sub">⚡ ANSWER FAST — PULL HARD — DRAG THEM TO THE LINE! ⚡</p>
       <div className="menu-card">
         <div className="mc-row">
-          <div className="mc-sect">
-            <div className="mc-lbl">⚙ DIFFICULTY</div>
+          <div className="mc-col">
+            <div className="mc-label">⚙ DIFFICULTY</div>
             <div className="mc-pills">
               {Object.keys(DIFFICULTIES).map(d => (
-                <button key={d} className={`mpill ${diff === d ? "mpill-active" : ""}`} onClick={() => setDiff(d)}>{d}</button>
+                <button key={d} className={`mpill ${diff === d ? "mpill-on" : ""}`} onClick={() => setDiff(d)}>{d}</button>
               ))}
             </div>
           </div>
         </div>
-        <button className="btn-start" onClick={startGame}>⚡ START TUG OF WAR ⚡</button>
-        <div className="mc-howto">
+        <button className="start-btn" onClick={startGame}>⚡ START TUG OF WAR ⚡</button>
+        <div className="mc-rules">
           <b>🔥 HOW TO WIN:</b> Answer your math question correctly to PULL the rope!<br/>
-          ⚡ <strong>NO WAITING:</strong> The moment you answer, the pull happens instantly — no need to wait for the other player!<br/>
+          ⚡ <strong>NO WAITING:</strong> The moment you answer, the pull happens instantly!<br/>
           💪 Each correct pull drags your opponent <strong>10%</strong> toward the center line.<br/>
-          🏆 <strong>10 PULLS = VICTORY!</strong> First to drag the enemy fully past the center line WINS!<br/>
+          🏆 <strong>10 PULLS = VICTORY!</strong> First to drag the enemy past the center line WINS!<br/>
           ❌ Wrong answer = you get dragged instead. Don't let the timer run out!
         </div>
       </div>
+      <div className="footer-credit">Created by Abob Wandati — Software Engineer</div>
     </div>
   );
 
@@ -535,33 +534,31 @@ export default function App() {
     const wt = !isDraw ? winner : null;
     return (
       <div className="app result">
-        <div className="result-bg" />
-        {wt && <div className="result-glow" style={{ background: `radial-gradient(ellipse at center, ${wt.glow} 0%, transparent 60%)` }}/>}
-        <div className="result-card">
-          <div className="result-fireworks">🏆 🎉 🎆 🥇 🎊</div>
-          <h2 className="result-title" style={{ color: wt ? wt.color : "#f1c40f", textShadow: `0 0 40px ${wt ? wt.color : "#f1c40f"}` }}>
-            {isDraw ? "DRAW! 🤝" : `${wt.name.toUpperCase()} WINS!`}
+        <div className="res-glow" style={{ background: wt ? `radial-gradient(ellipse at center, ${wt.glow} 0%, transparent 60%)` : "none" }} />
+        <div className="res-card">
+          <div className="res-confetti">🏆 🎉 🎆 🥇 🎊</div>
+          <h2 className="res-title" style={{ color: wt ? wt.color : "#f1c40f", textShadow: `0 0 40px ${wt ? wt.color : "#f1c40f"}` }}>
+            {isDraw ? "DRAW! 🤝" : `🎉 ${wt.name.toUpperCase()} WINS! 🎉`}
           </h2>
-          <div className="result-arena">
-            <div className="ra-char ra-char-l" style={{ left: `${leftCharPct}%` }}>
+          <div className="res-stage">
+            <div className="res-char" style={{ width: "100px", height: "180px" }}>
               <Human team={TEAM_LEFT} state={wt === TEAM_LEFT ? "winning" : wt === TEAM_RIGHT ? "dragged" : "idle"} />
+              <div className="res-score" style={{ color: TEAM_LEFT.color }}>{scoreL}</div>
             </div>
-            <Rope ropePos={ropePos} tick={tick} leftX={leftCharPct + 2} rightX={rightCharPct - 2} />
-            <div className="ra-char ra-char-r" style={{ left: `${rightCharPct}%` }}>
+            <div className="res-rope" style={{ height: "100px", flex: 1 }}>
+              <Rope ropePos={ropePos} tick={tick} leftX={20} rightX={80} />
+            </div>
+            <div className="res-char" style={{ width: "100px", height: "180px" }}>
               <Human team={TEAM_RIGHT} state={wt === TEAM_RIGHT ? "winning" : wt === TEAM_LEFT ? "dragged" : "idle"} flipped />
+              <div className="res-score" style={{ color: TEAM_RIGHT.color }}>{scoreR}</div>
             </div>
-            <div className="ra-floor" /><div className="ra-center" />
           </div>
-          <div className="result-scores">
-            <div className="rs-item" style={{ color: TEAM_LEFT.color }}><div className="rs-num">{scoreL}</div><div className="rs-lbl">🔥 Fire Pulls</div></div>
-            <div className="rs-vs">VS</div>
-            <div className="rs-item" style={{ color: TEAM_RIGHT.color }}><div className="rs-num">{scoreR}</div><div className="rs-lbl">❄️ Ice Pulls</div></div>
-          </div>
-          <div className="result-btns">
-            <button className="btn-start" onClick={startGame}>🔄 PLAY AGAIN</button>
-            <button className="btn-outline" onClick={goToMenu}>🏠 MENU</button>
+          <div className="res-btns">
+            <button className="start-btn" onClick={startGame}>🔄 PLAY AGAIN</button>
+            <button className="outline-btn" onClick={goToMenu}>🏠 MENU</button>
           </div>
         </div>
+        <div className="footer-credit">Created by Abob Wandati — Software Engineer</div>
       </div>
     );
   }
@@ -570,20 +567,22 @@ export default function App() {
   return (
     <div className="app game">
       <div className="game-bg" />
-      <div className="game-gl game-gl-l" />
-      <div className="game-gl game-gl-r" />
+      <div className="game-glow-l" />
+      <div className="game-glow-r" />
       <HudBar ropePos={ropePos} scoreL={scoreL} scoreR={scoreR} />
       <div className="arena">
-        <div className="arena-sky" /><div className="arena-floor" /><div className="arena-center-line" />
-        <div className="arena-center-zone" />
-        {norm > 0.4 && <div className="arena-danger-l" style={{ opacity: norm - 0.3 }} />}
-        {norm < -0.4 && <div className="arena-danger-r" style={{ opacity: -norm - 0.3 }} />}
-        <div className="arena-rope-layer"><Rope ropePos={ropePos} tick={tick} leftX={leftCharPct + 1.5} rightX={rightCharPct - 1.5} /></div>
-        <div className="arena-char" style={{ left: `${leftCharPct}%`, transition: "left 0.3s cubic-bezier(0.2, 1.2, 0.4, 1)" }}>
-          <Human team={TEAM_LEFT} state={stateL} />
+        <div className="arena-floor" />
+        <div className="arena-floor-line" />
+        <div className="arena-rope">
+          <Rope ropePos={ropePos} tick={tick} leftX={leftCharPct + 1.5} rightX={rightCharPct - 1.5} />
         </div>
-        <div className="arena-char" style={{ left: `${rightCharPct}%`, transform: "translateX(-100%)", transition: "left 0.3s cubic-bezier(0.2, 1.2, 0.4, 1)" }}>
+        <div className={`arena-char arena-char-l ${stateL === "pulling" ? "char-lunge-l" : ""}`} style={{ left: `${leftCharPct}%`, position: "relative" }}>
+          <Human team={TEAM_LEFT} state={stateL} />
+          {stateL === "pulling" && <div className="dust dust-l" />}
+        </div>
+        <div className={`arena-char arena-char-r ${stateR === "pulling" ? "char-lunge-r" : ""}`} style={{ left: `${rightCharPct}%`, position: "relative" }}>
           <Human team={TEAM_RIGHT} state={stateR} flipped />
+          {stateR === "pulling" && <div className="dust dust-r" />}
         </div>
       </div>
       {showBan && <div className="banner">{banner}</div>}
@@ -591,6 +590,7 @@ export default function App() {
         {qL && <QCard team={TEAM_LEFT} q={qL} opts={oL} onAnswer={v => handleAnswer("L", v)} timeLeft={timeLeftL} answered={answeredL} correct={correctL} side="left" />}
         {qR && <QCard team={TEAM_RIGHT} q={qR} opts={oR} onAnswer={v => handleAnswer("R", v)} timeLeft={timeLeftR} answered={answeredR} correct={correctR} side="right" />}
       </div>
+      <div className="footer-credit game-credit">Created by Abob Wandati — Software Engineer</div>
     </div>
   );
 }
