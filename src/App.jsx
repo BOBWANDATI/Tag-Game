@@ -547,7 +547,7 @@ export default function App() {
             <button className="outline-btn" onClick={goToMenu}>🏠 MENU</button>
           </div>
         </div>
-        <div className="footer-credit">Created by Abob Wandati — Software Engineer</div>
+        <div className="footer-credit">Created by Bob Wandati — Software Engineer</div>
       </div>
     );
   }
